@@ -4,7 +4,6 @@
 # CANDIDATA: DÉBORA BORGES DOS SANTOS PEREIRA 
 #------------------------------------------------------------------------------#
 
-
 #------------------------------------------------------------------------------#
 # Bibliotecas  utilizadas
 #------------------------------------------------------------------------------#
@@ -24,7 +23,6 @@ library(readxl)
 library(writexl)
 library(ggplot2) #para gráficos
 library(plotly) #para gerar gráfico dinâmicos
-library(rstatix) #para identificar outliers
 library(readr) #para ler bases
 library(Cairo)
 library(ggrepel)
@@ -66,7 +64,7 @@ pnadcovid_6 <- get_covid(year=2020, month=6, design = F)
 
 #Obs: bases 5 e 6 não contemplam informações sobre testes de covid,
 #presença de comorbidades, estratégias de prevenção ao covid e ente outras.
-#contudo, será utilizada para as variáveis que estão presentes no banco.
+#contudo, será utilizada para as analises descritivas que contemplam as demais.
 
 pnadcovid_7 <- get_covid(year=2020, month=7, design = F)
 pnadcovid_8 <- get_covid(year=2020, month=8, design = F)
@@ -96,18 +94,17 @@ pnadcovid_11 <- get_covid(year=2020, month=11, design = F)
 # Unindo os bancos:
 # -----------------------------------------------------------------------------#
 
-merged_dataset <- bind_rows(pnadcovid_9,
+merged_dataset <- bind_rows(pnadcovid_5,
+                            pnadcovid_6,
+                            pnadcovid_7,
+                            pnadcovid_8,
+                            pnadcovid_9,
                             pnadcovid_10,
                             pnadcovid_11
                             )
 #Observação: também é possível unir o banco através das funções merge, rbind, 
 #por exemplo.
 #------------------------------------------------------------------------------#
-# Importando o banco no formato excel para o meu diretório, assim facilita depois
-# quando for utilizá-lo sem precisar importar do site.
-
-write.xlsx(merged_dataset, file = "merged_dataset.xlsx", 
-           sheetName = "merged_dataset", append = FALSE)
 
 #------------------------------------------------------------------------------#
 # Seleção das variáveis de interesse, códigos fornecidos pelo dicionário 
@@ -117,7 +114,7 @@ write.xlsx(merged_dataset, file = "merged_dataset.xlsx",
 
 #Criação de uma lista com as variáveis de interesse:
 
-variaveis_interesse <- c("UF","CAPITAL","V1022", "UPA", "Estrato", "V1032",
+variaveis_interesse <- c("UF","CAPITAL","V1022","V1013", "UPA", "Estrato", "V1032",
                          "A001", "A001A", "A002", "A003", "A004", "A005",
                          "B0011", "B0012", "B0013", "B0014", "B0015", "B0016",
                          "B0017", "B0018", 
@@ -146,6 +143,7 @@ pnad_covid <- subset(merged_dataset, select= c(variaveis_interesse))
 pnad_covid <- pnad_covid %>%
   rename("Idade" = "A002",
          "tipo_moradia" = "V1022",
+         "mes_pesquisa" = "V1013",
          "Raca_Etnia" = "A004",
          "Sexo" = "A003",
          "Escolaridade" = "A005",
@@ -208,7 +206,6 @@ pnad_covid <- pnad_covid %>%
 
 #conferindo se a nomeacao ocorreu bem
 colnames(pnad_covid)
-
 #------------------------------------------------------------------------------#
 # Conferindo os valores ausentes do banco de dados.
 
@@ -249,8 +246,6 @@ pnad_covid$idadecat <- relevel(pnad_covid$idadecat, ref = "35-44")
 
 #Rendimento salarial
 
-table(pnad_covid$faixa_rendimento)
-
 pnad_covid$rendimento_cat <- factor(pnad_covid$faixa_rendimento,
                                     levels = c("0", "1", "2", "3", "4", 
                                                "5", "6", "7", "8", "9"),
@@ -266,6 +261,20 @@ pnad_covid$rendimento_cat <- factor(pnad_covid$faixa_rendimento,
                                                "100000+"))
 #definindo como categoria de referência, se caso utilizar algum glm.
 pnad_covid$rendimento_cat <- relevel(pnad_covid$rendimento_cat, ref = "801-1600")
+
+#Categorizando o mes da pesquisa
+
+pnad_covid$mes_cat <- factor(pnad_covid$mes_pesquisa,
+                                    levels = c("5", "6", "7", "8", "9", 
+                                               "10", "11"),
+                                    labels = c("Maio-2020",
+                                               "Junho-2020",
+                                               "Julho-2020",
+                                               "Agosto-2020",
+                                               "Setembro-2020",
+                                               "Outubro-2020",
+                                               "Novembro-2020"))
+
 
 #------------------------------------------------------------------------------#
 # Criação do objeto amostral
@@ -861,8 +870,6 @@ base_ponderada %>% group_by(agua_sanitaria) %>%
 
 
 
-
-
 #-------------------------------------------------------------------------------
 # EXEMPLO DE TESTE DE HIPÓTESES
 # ------------------------------------------------------------------------------
@@ -913,6 +920,32 @@ svyttest(formula=as.numeric(valor_reais)~tipo_moradia, design=base_ponderada)
 # resultado t teste = p <0.05
 
 
+
+#------------------------------------------------------------------------------#
+# EXPOTANDO OS BANCOS PARA SEREM UTILIZADOS NO POWER BI
+# -----------------------------------------------------------------------------#
+
+
+# exportando o banco completo 
+
+write.csv(merged_dataset, file = "merged_dataset.csv", row.names = FALSE)
+
+#exportando todo o banco com as variáveis de interesse de maio a novembro
+
+write.csv(pnad_covid, file = "pnad_covidfull.csv", row.names = FALSE)
+
+
+#filtrando um novo banco somente a partir do mes de julho
+
+
+pnad_covid$mes_pesquisa <- as.numeric(pnad_covid$mes_pesquisa)
+pnad_covid_jul_nov <- filter(pnad_covid, mes_pesquisa >= 7)
+table(pnad_covid_jul_nov$mes_pesquisa)
+
+write.csv(pnad_covid_jul_nov, file = "pnad_covid_jul_nov.csv", row.names = FALSE)
+
+
+
 # ------------------------------------------------------------------------------
 # Análises de regressão
 # ------------------------------------------------------------------------------
@@ -940,9 +973,70 @@ base_ponderada <- pnad_covid %>% as_survey_design(ids = UPA,
 #convencional.
 
 
-modeloLin <- svyglm(formula=valor_reais~Sexo+idadecat+Raca_Etnia, 
+modeloLin <- svyglm(formula=valor_reais~Sexo+Idade+Raca_Etnia, 
                     design=base_ponderada)
 summary(modeloLin)
-tbl_regression(modeloLin, exponentiate = TRUE)
+tbl_regression(modeloLin)
 
-      
+modeloLin2 <- svyglm(formula=horas_trabalho~Sexo+Idade+Raca_Etnia, 
+                    design=base_ponderada)
+summary(modeloLin2)
+tbl_regression(modeloLin2)
+
+
+#
+table(pnad_covid$result_swab)
+
+pnad_covid$result_swab2 <- factor(pnad_covid$result_swab,
+                             levels = c("Positivo", "Negativo", "Inconclusivo", 
+                                        "Ainda não recebeu o resultado", 
+                                        "Ignorado"),
+                             labels = c("1",
+                                        "0",
+                                        "1",
+                                        "1",
+                                        "1"))
+pnad_covid$result_swab2 <- relevel(pnad_covid$result_swab2, ref = "0")
+
+colnames(pnad_covid)
+str(pnad_covid$home_office)
+pnad_covid$home_office <- as.factor(pnad_covid$home_office)
+
+modeloLog <- svyglm(result_swab2~Idade+
+                      Sexo+
+                      home_office+
+                      luvas+
+                      alcool_70+
+                      mascaras+
+                      agua_sanitaria,
+                    design=base_ponderada, family="binomial")
+summary(modeloLog)
+tbl_regression(modeloLog)
+
+
+#doenca cronica como desfecho
+
+pnad_covid$diabete2 <- factor(pnad_covid$diabetes,
+                                  levels = c("Sim", "Não", 
+                                             "Ignorado"),
+                                  labels = c("1",
+                                             "0",
+                                             "1"))
+pnad_covid$diabete2 <- relevel(pnad_covid$diabete2, ref = "0")
+
+table(pnad_covid$internacao)
+table(pnad_covid$sedado_intubacao_resp)
+pnad_covid$internacao <- as.factor(pnad_covid$internacao)
+pnad_covid$sedado_intubacao_resp <- as.factor(pnad_covid$sedado_intubacao_resp)
+
+
+modeloLog2 <- svyglm(diabete2~Idade+
+                      Sexo+
+                      Raca_Etnia+
+                      sedado_intubacao_resp,
+                      design=base_ponderada, family="binomial")
+summary(modeloLog)
+tbl_regression(modeloLog2)
+
+
+

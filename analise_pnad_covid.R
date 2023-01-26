@@ -967,76 +967,22 @@ base_ponderada <- pnad_covid %>% as_survey_design(ids = UPA,
 # Modelo linear
 
 #No exemplo abaixo, utilizamos um modelo de regressão com rendimento normalmente 
-#recebido em dinheiro como variável dependente e escolaridade, cor ou raça e 
+#recebido em dinheiro como variável dependente e escolaridade, cor ou raça, escolaridade, tipo de emprego e 
 #idade como variáveis explicativas. Para obter as estatísticas do modelo, pode 
 #ser utilizada a função summary, assim como feito para a regressão linear 
 #convencional.
 
 
-modeloLin <- svyglm(formula=valor_reais~Sexo+Idade+Raca_Etnia, 
-                    design=base_ponderada)
+modeloLin <- svyglm(formula=valor_reais~Sexo+
+                      Raca_Etnia+tipo_moradia+
+                      Idade+Escolaridade+
+                      Tipo_emprego,
+                      design=base_ponderada)
 summary(modeloLin)
 tbl_regression(modeloLin)
 
-modeloLin2 <- svyglm(formula=horas_trabalho~Sexo+Idade+Raca_Etnia, 
-                    design=base_ponderada)
-summary(modeloLin2)
-tbl_regression(modeloLin2)
 
 
-#
-table(pnad_covid$result_swab)
-
-pnad_covid$result_swab2 <- factor(pnad_covid$result_swab,
-                             levels = c("Positivo", "Negativo", "Inconclusivo", 
-                                        "Ainda não recebeu o resultado", 
-                                        "Ignorado"),
-                             labels = c("1",
-                                        "0",
-                                        "1",
-                                        "1",
-                                        "1"))
-pnad_covid$result_swab2 <- relevel(pnad_covid$result_swab2, ref = "0")
-
-colnames(pnad_covid)
-str(pnad_covid$home_office)
-pnad_covid$home_office <- as.factor(pnad_covid$home_office)
-
-modeloLog <- svyglm(result_swab2~Idade+
-                      Sexo+
-                      home_office+
-                      luvas+
-                      alcool_70+
-                      mascaras+
-                      agua_sanitaria,
-                    design=base_ponderada, family="binomial")
-summary(modeloLog)
-tbl_regression(modeloLog)
-
-
-#doenca cronica como desfecho
-
-pnad_covid$diabete2 <- factor(pnad_covid$diabetes,
-                                  levels = c("Sim", "Não", 
-                                             "Ignorado"),
-                                  labels = c("1",
-                                             "0",
-                                             "1"))
-pnad_covid$diabete2 <- relevel(pnad_covid$diabete2, ref = "0")
-
-table(pnad_covid$internacao)
-table(pnad_covid$sedado_intubacao_resp)
-pnad_covid$internacao <- as.factor(pnad_covid$internacao)
-pnad_covid$sedado_intubacao_resp <- as.factor(pnad_covid$sedado_intubacao_resp)
-
-
-modeloLog2 <- svyglm(diabete2~Idade+
-                      Sexo+
-                      Raca_Etnia+
-                      sedado_intubacao_resp,
-                      design=base_ponderada, family="binomial")
-summary(modeloLog)
-tbl_regression(modeloLog2)
 
 
 

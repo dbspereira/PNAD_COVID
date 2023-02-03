@@ -1,7 +1,7 @@
 #------------------------------------------------------------------------------#
-# TESTE ANALISTA DE DADOS - EINSTEIN
+#
 # BASE DE DADOS UTILIZADA: PNAD COVID 
-# CANDIDATA: DÉBORA BORGES DOS SANTOS PEREIRA 
+# Autoria: DÉBORA BORGES DOS SANTOS PEREIRA 
 #------------------------------------------------------------------------------#
 
 #------------------------------------------------------------------------------#
